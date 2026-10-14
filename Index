@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X Technology's | Laboratorio de Diagnóstico de Mandos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --panel-bg: rgba(15, 23, 42, 0.85);
+      --border-glow: rgba(56, 189, 248, 0.25);
+    }
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.12), transparent 35%),
+        radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.08), transparent 35%),
+        linear-gradient(to bottom, #070b14, #090e1a);
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+    }
+    /* Animaciones e iluminación de botones en los SVG */
+    .svg-btn {
+      transition: all 0.06s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+    .svg-btn.pressed {
+      fill: #38bdf8 !important;
+      stroke: #bae6fd !important;
+      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.95));
+      transform: scale(0.93);
+    }
+    .svg-btn.faulty {
+      stroke: #ef4444 !important;
+      stroke-width: 2.5px !important;
+      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.9));
+    }
+    .svg-stick {
+      transition: transform 0.02s linear;
+    }
+    .touchpad-surface {
+      cursor: crosshair;
+    }
+    /* Scrollbar estética */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
+
+  <!-- BARRA SUPERIOR -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center shadow-lg shadow-sky-500/20 font-black text-xl tracking-tighter text-white">
+          XT
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-lg tracking-tight text-white">X TECHNOLOGY'S</h1>
+            <span class="text-[11px] mono uppercase px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30 font-semibold">Lab v4.9</span>
+          </div>
+          <p class="text-xs text-slate-400">Sistema de Diagnóstico de Drift, Membranas Flexibles, Microswitches y Touchpad</p>
+        </div>
+      </div>
+
+      <!-- Estado de Conexión -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div id="connectionBadge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium">
+          <span id="connDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="connText">Esperando mando (Presiona cualquier botón)...</span>
+        </div>
+
+        <button id="btnWebHID" onclick="connectWebHIDTouchpad()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600/25 hover:bg-indigo-600/40 border border-indigo-400/40 text-indigo-200 text-xs font-semibold flex items-center gap-2 transition">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"/>
+          </svg>
+          <span>Conectar Touchpad (WebHID)</span>
+        </button>
+
+        <button onclick="vibrateController()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition">
+          Probar Vibración
+        </button>
+
+        <button onclick="resetDiagnostics()" class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold transition">
+          Reiniciar Test
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-[1600px] w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+
+    <!-- COLUMNA IZQUIERDA: SELECTOR DE MANDO Y RADARES DE STICKS (3 COLS) -->
+    <section class="lg:col-span-3 flex flex-col gap-4">
+      
+      <!-- Selector Manual / Automático de Mando -->
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Modelo Detectado / Vista</h2>
+          <span id="boardRevisionBadge" class="text-[11px] mono px-2 py-0.5 rounded bg-slate-800 text-sky-400 border border-slate-700">BDM-010/020/030/040</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="setControllerProfile('ps5')" id="tab-ps5" class="profile-tab px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition bg-sky-500/20 border-sky-400 text-white">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span> PS5 DualSense
+          </button>
+          <button onclick="setControllerProfile('ps4')" id="tab-ps4" class="profile-tab px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white text-xs font-bold flex items-center gap-2 transition">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span> PS4 DualShock 4
+          </button>
+          <button onclick="setControllerProfile('xbox')" id="tab-xbox" class="profile-tab px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white text-xs font-bold flex items-center gap-2 transition">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Xbox One / Series
+          </button>
+          <button onclick="setControllerProfile('switch')" id="tab-switch" class="profile-tab px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white text-xs font-bold flex items-center gap-2 transition">
+            <span class="w-2 h-2 rounded-full bg-rose-400"></span> Switch Joy-Con
+          </button>
+        </div>
+        <p id="controllerIdString" class="mt-2.5 text-[11px] mono text-slate-400 truncate">ID: Modo interactivo / Esperando entrada USB o Bluetooth</p>
+      </div>
+
+      <!-- Telemetría de Joysticks + Circularidad (Drift) -->
+      <div class="glass-panel rounded-2xl p-4 flex-1 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Telemetría de Joysticks & Drift</h2>
+            <label class="flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer">
+              <input type="checkbox" id="traceToggle" checked class="accent-sky-400 rounded">
+              <span>Trazar circularidad</span>
+            </label>
+          </div>
+
+          <!-- Radares L3 y R3 -->
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Stick Izquierdo -->
+            <div class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 flex flex-col items-center">
+              <div class="w-full flex justify-between items-center mb-1">
+                <span class="text-xs font-bold text-slate-300">Stick Izq (LX/LY)</span>
+                <span id="leftDriftStatus" class="text-[10px] mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">OK</span>
+              </div>
+              <canvas id="canvasLeftStick" width="130" height="130" class="rounded-lg bg-slate-900/90 border border-slate-800 my-1"></canvas>
+              <div class="w-full text-[11px] mono text-slate-400 mt-1 space-y-0.5">
+                <div class="flex justify-between"><span>X:</span><span id="lxVal" class="text-slate-200">0.000</span></div>
+                <div class="flex justify-between"><span>Y:</span><span id="lyVal" class="text-slate-200">0.000</span></div>
+                <div class="flex justify-between"><span>Ruido/Drift:</span><span id="lDriftPct" class="text-sky-400">0.0%</span></div>
+              </div>
+            </div>
+
+            <!-- Stick Derecho -->
+            <div class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 flex flex-col items-center">
+              <div class="w-full flex justify-between items-center mb-1">
+                <span class="text-xs font-bold text-slate-300">Stick Der (RX/RY)</span>
+                <span id="rightDriftStatus" class="text-[10px] mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">OK</span>
+              </div>
+              <canvas id="canvasRightStick" width="130" height="130" class="rounded-lg bg-slate-900/90 border border-slate-800 my-1"></canvas>
+              <div class="w-full text-[11px] mono text-slate-400 mt-1 space-y-0.5">
+                <div class="flex justify-between"><span>X:</span><span id="rxVal" class="text-slate-200">0.000</span></div>
+                <div class="flex justify-between"><span>Y:</span><span id="ryVal" class="text-slate-200">0.000</span></div>
+                <div class="flex justify-between"><span>Ruido/Drift:</span><span id="rDriftPct" class="text-sky-400">0.0%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Medidores de Gatillos Analógicos L2 / R2 -->
+          <div class="mt-4 space-y-2.5">
+            <div>
+              <div class="flex justify-between text-xs mono mb-1">
+                <span class="text-slate-400" id="lblL2">Gatillo L2 / LT / ZL</span>
+                <span id="valL2" class="text-sky-400 font-semibold">0% (0.00)</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="barL2" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-75" style="width: 0%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mono mb-1">
+                <span class="text-slate-400" id="lblR2">Gatillo R2 / RT / ZR</span>
+                <span id="valR2" class="text-sky-400 font-semibold">0% (0.00)</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="barR2" class="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-75" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulador de Fallas de Taller -->
+        <div class="mt-4 pt-3 border-t border-slate-800/80">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Simulador de Fallas (Demo Taller)</span>
+            <button onclick="clearSimulatedFaults()" class="text-[11px] text-slate-400 hover:text-white underline">Limpiar</button>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button onclick="simulateFault('drift_left')" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-slate-300 text-left transition">
+              + Drift Stick Izq.
+            </button>
+            <button onclick="simulateFault('membrane_dpad')" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-slate-300 text-left transition">
+              + Falla Membrana/Goma
+            </button>
+            <button onclick="simulateFault('chatter_x')" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-slate-300 text-left transition">
+              + Rebote Botón / Switch
+            </button>
+            <button onclick="simulateFault('trigger_pot')" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-slate-300 text-left transition">
+              + Falla Gatillo R2/ZR
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMNA CENTRAL: VISUALIZADOR REALISTA DEL MANDO + TOUCHPAD DUALSENSE (5 COLS) -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      <div class="glass-panel rounded-2xl p-5 flex-1 flex flex-col justify-between relative overflow-hidden">
+        
+        <!-- Encabezado del Visualizador -->
+        <div class="flex flex-wrap items-center justify-between gap-2 z-10">
+          <div>
+            <h2 id="ControllerTitle" class="text-base font-extrabold text-white tracking-tight">Sony DualSense (PS5 Original)</h2>
+            <p id="ControllerSubtitle" class="text-xs text-slate-400">Animación en tiempo real + Sensor Touchpad Capacitivo (1920×1080)</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="touchStatusPill" class="text-[11px] mono px-2.5 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300">
+              Touchpad: Activo (Pasa el dedo o ratón)
+            </span>
+          </div>
+        </div>
+
+        <!-- CONTENEDOR DEL MANDO SVG -->
+        <div class="my-auto py-2 flex items-center justify-center relative select-none">
+
+          <!-- =====================================================
+               1. SVG ORIGINAL PS5 DUALSENSE (BLANCO/NEGRO BICOLOR)
+               ===================================================== -->
+          <svg id="svg-ps5" viewBox="0 0 600 410" class="w-full max-w-[540px] drop-shadow-[0_25px_35px_rgba(0,0,0,0.85)]">
+            <defs>
+              <linearGradient id="ps5WhiteShell" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#f8fafc"/>
+                <stop offset="65%" stop-color="#e2e8f0"/>
+                <stop offset="100%" stop-color="#cbd5e1"/>
+              </linearGradient>
+              <linearGradient id="ps5BlackCore" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#1e293b"/>
+                <stop offset="100%" stop-color="#090d16"/>
+              </linearGradient>
+              <filter id="blueGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+              </filter>
+            </defs>
+
+            <!-- Gatillos L2 / R2 y Botones L1 / R1 -->
+            <path id="ps5-b6" class="svg-btn" d="M 135 55 Q 165 25 215 42 L 215 68 L 135 72 Z" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+            <text x="165" y="54" fill="#94a3b8" font-size="11" font-weight="bold">L2</text>
+            <path id="ps5-b4" class="svg-btn" d="M 128 74 Q 170 58 220 68 L 220 88 L 125 92 Z" fill="#0f172a" stroke="#64748b" stroke-width="2"/>
+            <text x="165" y="81" fill="#cbd5e1" font-size="10" font-weight="bold">L1</text>
+
+            <path id="ps5-b7" class="svg-btn" d="M 465 55 Q 435 25 385 42 L 385 68 L 465 72 Z" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+            <text x="420" y="54" fill="#94a3b8" font-size="11" font-weight="bold">R2</text>
+            <path id="ps5-b5" class="svg-btn" d="M 472 74 Q 430 58 380 68 L 380 88 L 475 92 Z" fill="#0f172a" stroke="#64748b" stroke-width="2"/>
+            <text x="420" y="81" fill="#cbd5e1" font-size="10" font-weight="bold">R1</text>
+
+            <!-- Núcleo Inferior Negro DualSense -->
+            <path d="M 155 230 Q 300 260 445 230 L 470 330 Q 445 365 420 325 L 382 268 Q 300 272 218 268 L 180 325 Q 155 365 130 330 Z" fill="url(#ps5BlackCore)" stroke="#334155" stroke-width="1.5"/>
+
+            <!-- Carcasa Blanca Original DualSense -->
+            <path d="M 125 85 Q 92 140 82 245 Q 72 345 112 372 Q 148 392 175 330 L 212 255 Q 245 190 202 85 Z" fill="url(#ps5WhiteShell)" stroke="#94a3b8" stroke-width="2"/>
+            <path d="M 475 85 Q 508 140 518 245 Q 528 345 488 372 Q 452 392 425 330 L 388 255 Q 355 190 398 85 Z" fill="url(#ps5WhiteShell)" stroke="#94a3b8" stroke-width="2"/>
+            <!-- Puente Superior Blanco/Gris -->
+            <path d="M 125 85 Q 300 68 475 85 L 448 232 Q 300 250 152 232 Z" fill="url(#ps5WhiteShell)" stroke="#cbd5e1" stroke-width="1.5"/>
+
+            <!-- Tiras LED Azules a los lados del Touchpad -->
+            <path d="M 205 78 L 222 178" stroke="#0ea5e9" stroke-width="5" stroke-linecap="round" filter="url(#blueGlow)"/>
+            <path d="M 395 78 L 378 178" stroke="#0ea5e9" stroke-width="5" stroke-linecap="round" filter="url(#blueGlow)"/>
+
+            <!-- TOUCHPAD INTERACTIVO DUALSENSE (Blanco Mate Trapezoidal) -->
+            <g id="ps5-touchpad-group" class="touchpad-surface">
+              <polygon id="ps5-b17" class="svg-btn" points="210,75 390,75 373,174 227,174" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+              <line x1="220" y1="124" x2="380" y2="124" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="1"/>
+              <line x1="300" y1="80" x2="300" y2="170" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="1"/>
+              <text x="300" y="165" text-anchor="middle" fill="#64748b" font-size="9" font-family="JetBrains Mono">TOUCHPAD CAPACITIVO (DESLIZA AQUÍ)</text>
+              <!-- Rastro y Puntos de Dedos -->
+              <polyline id="ps5TouchTrail" points="" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+              <circle id="ps5Finger1" cx="300" cy="124" r="9" fill="#0ea5e9" stroke="#ffffff" stroke-width="2.5" class="hidden" filter="url(#blueGlow)"/>
+              <text id="ps5Finger1Text" x="300" y="108" text-anchor="middle" fill="#0369a1" font-size="9" font-weight="bold" font-family="JetBrains Mono" class="hidden">X:0 Y:0</text>
+              <circle id="ps5Finger2" cx="320" cy="124" r="8" fill="#ec4899" stroke="#ffffff" stroke-width="2" class="hidden"/>
+            </g>
+
+            <!-- Botones Create (8) y Options (9) -->
+            <rect id="ps5-b8" class="svg-btn" x="188" y="92" width="12" height="22" rx="6" transform="rotate(-18 194 103)" fill="#cbd5e1" stroke="#475569" stroke-width="1.5"/>
+            <rect id="ps5-b9" class="svg-btn" x="400" y="92" width="12" height="22" rx="6" transform="rotate(18 406 103)" fill="#cbd5e1" stroke="#475569" stroke-width="1.5"/>
+
+            <!-- Cruceta (D-Pad Cristal Translúcido) -->
+            <g transform="translate(158, 158)">
+              <circle cx="0" cy="0" r="42" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
+              <path id="ps5-b12" class="svg-btn" d="M -11 -35 L 11 -35 L 11 -12 L 0 -4 L -11 -12 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+              <path id="ps5-b13" class="svg-btn" d="M -11 35 L 11 35 L 11 12 L 0 4 L -11 12 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+              <path id="ps5-b14" class="svg-btn" d="M -35 -11 L -35 11 L -12 11 L -4 0 L -12 -11 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+              <path id="ps5-b15" class="svg-btn" d="M 35 -11 L 35 11 L 12 11 L 4 0 L 12 -11 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+            </g>
+
+            <!-- Botones de Acción PS5 (Cristal Blanco con Símbolos Grises) -->
+            <g transform="translate(442, 158)">
+              <circle cx="0" cy="0" r="44" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
+              <!-- Triángulo (b3) -->
+              <g id="ps5-b3" class="svg-btn">
+                <circle cx="0" cy="-27" r="13" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+                <polygon points="0,-34 -7,-22 7,-22" fill="none" stroke="#475569" stroke-width="2"/>
+              </g>
+              <!-- Cruz (b0) -->
+              <g id="ps5-b0" class="svg-btn">
+                <circle cx="0" cy="27" r="13" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+                <path d="M -5 22 L 5 32 M 5 22 L -5 32" stroke="#475569" stroke-width="2.2"/>
+              </g>
+              <!-- Cuadrado (b2) -->
+              <g id="ps5-b2" class="svg-btn">
+                <circle cx="-27" cy="0" r="13" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+                <rect x="-32" y="-5" width="10" height="10" fill="none" stroke="#475569" stroke-width="2"/>
+              </g>
+              <!-- Círculo (b1) -->
+              <g id="ps5-b1" class="svg-btn">
+                <circle cx="27" cy="0" r="13" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+                <circle cx="27" cy="0" r="5.5" fill="none" stroke="#475569" stroke-width="2"/>
+              </g>
+            </g>
+
+            <!-- Altavoz Central + Botón PS (b16) + Botón Mute Mic -->
+            <g transform="translate(300, 200)">
+              <circle cx="-12" cy="-8" r="1.5" fill="#334155"/><circle cx="-4" cy="-8" r="1.5" fill="#334155"/><circle cx="4" cy="-8" r="1.5" fill="#334155"/><circle cx="12" cy="-8" r="1.5" fill="#334155"/>
+              <circle cx="-8" cy="-3" r="1.5" fill="#334155"/><circle cx="0" cy="-3" r="1.5" fill="#334155"/><circle cx="8" cy="-3" r="1.5" fill="#334155"/>
+              <!-- Botón PS -->
+              <rect id="ps5-b16" class="svg-btn" x="-14" y="8" width="28" height="16" rx="8" fill="#0f172a" stroke="#64748b" stroke-width="1.8"/>
+              <text x="0" y="19" text-anchor="middle" fill="#f8fafc" font-size="9" font-weight="bold">PS</text>
+              <!-- Mute LED -->
+              <rect x="-8" y="30" width="16" height="6" rx="3" fill="#f59e0b"/>
+            </g>
+
+            <!-- Stick Analógico Izquierdo (L3 - b10) -->
+            <g transform="translate(232, 224)">
+              <circle cx="0" cy="0" r="34" fill="#090d16" stroke="#475569" stroke-width="2"/>
+              <g id="ps5-stick-left" class="svg-stick">
+                <circle id="ps5-b10" class="svg-btn" cx="0" cy="0" r="24" fill="#1e293b" stroke="#64748b" stroke-width="3"/>
+                <circle cx="0" cy="0" r="16" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="2,2"/>
+                <text x="0" y="4" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">L3</text>
+              </g>
+            </g>
+
+            <!-- Stick Analógico Derecho (R3 - b11) -->
+            <g transform="translate(368, 224)">
+              <circle cx="0" cy="0" r="34" fill="#090d16" stroke="#475569" stroke-width="2"/>
+              <g id="ps5-stick-right" class="svg-stick">
+                <circle id="ps5-b11" class="svg-btn" cx="0" cy="0" r="24" fill="#1e293b" stroke="#64748b" stroke-width="3"/>
+                <circle cx="0" cy="0" r="16" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="2,2"/>
+                <text x="0" y="4" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">R3</text>
+              </g>
+            </g>
+          </svg>
+
+          <!-- =====================================================
+               2. SVG ORIGINAL PS4 DUALSHOCK 4 V2 (JET BLACK)
+               ===================================================== -->
+          <svg id="svg-ps4" viewBox="0 0 600 410" class="w-full max-w-[540px] hidden drop-shadow-[0_25px_35px_rgba(0,0,0,0.85)]">
+            <defs>
+              <linearGradient id="ps4JetBlack" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#27272a"/>
+                <stop offset="60%" stop-color="#18181b"/>
+                <stop offset="100%" stop-color="#09090b"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Gatillos L2/R2 y L1/R1 -->
+            <path id="ps4-b6" class="svg-btn" d="M 140 55 Q 170 30 215 45 L 215 68 L 140 72 Z" fill="#18181b" stroke="#52525b" stroke-width="2"/>
+            <text x="168" y="55" fill="#a1a1aa" font-size="10" font-weight="bold">L2</text>
+            <path id="ps4-b4" class="svg-btn" d="M 135 72 Q 175 60 220 68 L 220 88 L 135 90 Z" fill="#27272a" stroke="#71717a" stroke-width="2"/>
+            <text x="168" y="81" fill="#e4e4e7" font-size="10" font-weight="bold">L1</text>
+
+            <path id="ps4-b7" class="svg-btn" d="M 460 55 Q 430 30 385 45 L 385 68 L 460 72 Z" fill="#18181b" stroke="#52525b" stroke-width="2"/>
+            <text x="418" y="55" fill="#a1a1aa" font-size="10" font-weight="bold">R2</text>
+            <path id="ps4-b5" class="svg-btn" d="M 465 72 Q 425 60 380 68 L 380 88 L 465 90 Z" fill="#27272a" stroke="#71717a" stroke-width="2"/>
+            <text x="418" y="81" fill="#e4e4e7" font-size="10" font-weight="bold">R1</text>
+
+            <!-- Cuerpo Principal DualShock 4 Jet Black -->
+            <path d="M 130 85 Q 85 140 82 250 Q 80 355 125 368 Q 168 378 192 310 L 220 255 L 380 255 L 408 310 Q 432 378 475 368 Q 520 355 518 250 Q 515 140 470 85 Q 300 72 130 85 Z" fill="url(#ps4JetBlack)" stroke="#3f3f46" stroke-width="2.5"/>
+
+            <!-- Touchpad Negro con Lightbar Azul Superior V2 -->
+            <g id="ps4-touchpad-group" class="touchpad-surface">
+              <rect id="ps4-b17" class="svg-btn" x="215" y="78" width="170" height="94" rx="8" fill="#18181b" stroke="#52525b" stroke-width="2"/>
+              <!-- Lightbar V2 -->
+              <line x1="230" y1="84" x2="370" y2="84" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+              <text x="300" y="160" text-anchor="middle" fill="#71717a" font-size="9" font-family="JetBrains Mono">TOUCHPAD DS4 (DESLIZA AQUÍ)</text>
+              <polyline id="ps4TouchTrail" points="" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+              <circle id="ps4Finger1" cx="300" cy="125" r="8" fill="#38bdf8" stroke="#ffffff" stroke-width="2" class="hidden"/>
+              <text id="ps4Finger1Text" x="300" y="110" text-anchor="middle" fill="#bae6fd" font-size="9" font-family="JetBrains Mono" class="hidden">X:0 Y:0</text>
+              <circle id="ps4Finger2" cx="320" cy="125" r="7" fill="#f472b6" stroke="#ffffff" stroke-width="2" class="hidden"/>
+            </g>
+
+            <!-- Botones SHARE (8) y OPTIONS (9) -->
+            <rect id="ps4-b8" class="svg-btn" x="192" y="88" width="12" height="22" rx="6" fill="#3f3f46" stroke="#71717a" stroke-width="1.5"/>
+            <text x="198" y="82" text-anchor="middle" fill="#a1a1aa" font-size="7" font-weight="bold">SHARE</text>
+            <rect id="ps4-b9" class="svg-btn" x="396" y="88" width="12" height="22" rx="6" fill="#3f3f46" stroke="#71717a" stroke-width="1.5"/>
+            <text x="402" y="82" text-anchor="middle" fill="#a1a1aa" font-size="7" font-weight="bold">OPTIONS</text>
+
+            <!-- Cruceta Clásica DualShock 4 -->
+            <g transform="translate(158, 160)">
+              <circle cx="0" cy="0" r="42" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+              <path id="ps4-b12" class="svg-btn" d="M -11 -35 L 11 -35 L 11 -11 L 0 -3 L -11 -11 Z" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+              <path id="ps4-b13" class="svg-btn" d="M -11 35 L 11 35 L 11 11 L 0 3 L -11 11 Z" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+              <path id="ps4-b14" class="svg-btn" d="M -35 -11 L -35 11 L -11 11 L -3 0 L -11 -11 Z" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+              <path id="ps4-b15" class="svg-btn" d="M 35 -11 L 35 11 L 11 11 L 3 0 L 11 -11 Z" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+            </g>
+
+            <!-- Botones de Acción PS4 Originales con Símbolos a Color -->
+            <g transform="translate(442, 160)">
+              <circle cx="0" cy="0" r="44" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+              <!-- Triángulo Verde -->
+              <g id="ps4-b3" class="svg-btn">
+                <circle cx="0" cy="-27" r="13" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+                <polygon points="0,-34 -7,-22 7,-22" fill="none" stroke="#34d399" stroke-width="2.2"/>
+              </g>
+              <!-- Cruz Azul -->
+              <g id="ps4-b0" class="svg-btn">
+                <circle cx="0" cy="27" r="13" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+                <path d="M -5 22 L 5 32 M 5 22 L -5 32" stroke="#60a5fa" stroke-width="2.4"/>
+              </g>
+              <!-- Cuadrado Rosa -->
+              <g id="ps4-b2" class="svg-btn">
+                <circle cx="-27" cy="0" r="13" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+                <rect x="-32" y="-5" width="10" height="10" fill="none" stroke="#f472b6" stroke-width="2.2"/>
+              </g>
+              <!-- Círculo Rojo -->
+              <g id="ps4-b1" class="svg-btn">
+                <circle cx="27" cy="0" r="13" fill="#27272a" stroke="#52525b" stroke-width="1.8"/>
+                <circle cx="27" cy="0" r="5.5" fill="none" stroke="#f87171" stroke-width="2.2"/>
+              </g>
+            </g>
+
+            <!-- Botón PS Central (b16) -->
+            <circle id="ps4-b16" class="svg-btn" cx="300" cy="224" r="12" fill="#18181b" stroke="#52525b" stroke-width="2"/>
+            <text x="300" y="227" text-anchor="middle" fill="#e4e4e7" font-size="8" font-weight="bold">PS</text>
+
+            <!-- Sticks Izquierdo y Derecho -->
+            <g transform="translate(232, 224)">
+              <circle cx="0" cy="0" r="33" fill="#09090b" stroke="#3f3f46" stroke-width="2"/>
+              <g id="ps4-stick-left" class="svg-stick">
+                <circle id="ps4-b10" class="svg-btn" cx="0" cy="0" r="24" fill="#27272a" stroke="#52525b" stroke-width="3"/>
+                <text x="0" y="4" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="bold">L3</text>
+              </g>
+            </g>
+            <g transform="translate(368, 224)">
+              <circle cx="0" cy="0" r="33" fill="#09090b" stroke="#3f3f46" stroke-width="2"/>
+              <g id="ps4-stick-right" class="svg-stick">
+                <circle id="ps4-b11" class="svg-btn" cx="0" cy="0" r="24" fill="#27272a" stroke="#52525b" stroke-width="3"/>
+                <text x="0" y="4" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="bold">R3</text>
+              </g>
+            </g>
+          </svg>
+
+          <!-- =====================================================
+               3. SVG ORIGINAL XBOX SERIES X|S / ONE (CARBON BLACK)
+               ===================================================== -->
+          <svg id="svg-xbox" viewBox="0 0 600 410" class="w-full max-w-[540px] hidden drop-shadow-[0_25px_35px_rgba(0,0,0,0.85)]">
+            <defs>
+              <linearGradient id="xboxCarbon" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#262626"/>
+                <stop offset="100%" stop-color="#111111"/>
+              </linearGradient>
+            </defs>
+
+            <!-- LT / RT y LB / RB -->
+            <path id="xbox-b6" class="svg-btn" d="M 145 45 Q 175 22 220 40 L 220 65 L 145 68 Z" fill="#171717" stroke="#525252" stroke-width="2"/>
+            <text x="175" y="52" fill="#a3a3a3" font-size="10" font-weight="bold">LT</text>
+            <path id="xbox-b4" class="svg-btn" d="M 130 66 Q 180 52 235 64 L 235 86 L 130 88 Z" fill="#262626" stroke="#737373" stroke-width="2"/>
+            <text x="175" y="79" fill="#e5e5e5" font-size="10" font-weight="bold">LB</text>
+
+            <path id="xbox-b7" class="svg-btn" d="M 455 45 Q 425 22 380 40 L 380 65 L 455 68 Z" fill="#171717" stroke="#525252" stroke-width="2"/>
+            <text x="412" y="52" fill="#a3a3a3" font-size="10" font-weight="bold">RT</text>
+            <path id="xbox-b5" class="svg-btn" d="M 470 66 Q 420 52 365 64 L 365 86 L 470 88 Z" fill="#262626" stroke="#737373" stroke-width="2"/>
+            <text x="412" y="79" fill="#e5e5e5" font-size="10" font-weight="bold">RB</text>
+
+            <!-- Carcasa Carbon Black Xbox Series -->
+            <path d="M 125 82 Q 80 140 75 260 Q 72 360 125 375 Q 168 385 205 305 L 235 265 L 365 265 L 395 305 Q 432 385 475 375 Q 528 360 525 260 Q 520 140 475 82 Q 300 58 125 82 Z" fill="url(#xboxCarbon)" stroke="#404040" stroke-width="2.5"/>
+
+            <!-- Botón Guia Xbox (b16) -->
+            <circle id="xbox-b16" class="svg-btn" cx="300" cy="102" r="18" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="2"/>
+            <path d="M 291 94 L 309 110 M 309 94 L 291 110" stroke="#171717" stroke-width="3" stroke-linecap="round"/>
+
+            <!-- Botones View (b8), Share (b17) y Menu (b9) -->
+            <circle id="xbox-b8" class="svg-btn" cx="260" cy="145" r="10" fill="#262626" stroke="#737373" stroke-width="1.8"/>
+            <circle id="xbox-b9" class="svg-btn" cx="340" cy="145" r="10"
